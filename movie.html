@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Loading Movie Details...</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+        body { background-color: #050811; color: white; font-family: 'Inter', sans-serif; }
+        .detail-poster { width: 100%; max-width: 280px; border-radius: 20px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7); }
+    </style>
+</head>
+<body>
+
+    <nav class="p-6">
+        <button onclick="window.close()" class="text-blue-500 font-black uppercase text-xs tracking-widest flex items-center gap-2 bg-gray-900/50 px-4 py-2 rounded-full border border-gray-800 hover:bg-blue-600 hover:text-white transition">
+            ← Close Tab
+        </button>
+    </nav>
+
+    <main class="container mx-auto p-6">
+        <div id="movie-content" class="flex flex-col md:flex-row gap-12 items-start mt-4">
+            <p class="text-gray-500 animate-pulse">Fetching movie from database...</p>
+        </div>
+    </main>
+
+    <script>
+        // একই Firebase Configuration এখানেও থাকবে
+        const firebaseConfig = {
+            apiKey: "AIzaSyDpYzp9DfJ6JZeZ0dgCOppP_ZzU-NnZeBY",
+            authDomain: "naw179.firebaseapp.com",
+            projectId: "naw179",
+            storageBucket: "naw179.firebasestorage.app",
+            messagingSenderId: "829601524927",
+            appId: "1:829601524927:web:5cca620b1f2d82c3c82a0a",
+            measurementId: "G-XGFJ0LTEH3"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        // URL থেকে ইউনিক মুভি ID সংগ্রহ করা (?id=XXXXXX)
+        const params = new URLSearchParams(window.location.search);
+        const movieId = params.get('id');
+
+        async function getMovieDetails() {
+            if (!movieId) {
+                document.getElementById('movie-content').innerHTML = "<h1 class='text-xl font-bold text-red-500'>No Movie Requested!</h1>";
+                return;
+            }
+
+            try {
+                const doc = await db.collection('movies').doc(movieId).get();
+                if (doc.exists) {
+                    const m = doc.data();
+                    
+                    // ব্রাউজারের ট্যাবের টাইটেল মুভির নাম দিয়ে রিপ্লেস করা
+                    document.title = m.title + " - Watch Now";
+
+                    // ক্যাটাগরি অ্যারে বা স্ট্রিং হ্যান্ডেল করা
+                    let categoriesText = "";
+                    if(Array.isArray(m.category)) {
+                        categoriesText = m.category.join(' / ');
+                    } else {
+                        categoriesText = m.category || "Movie";
+                    }
+
+                    // ডাউনলোড লিংক রেন্ডার লজিক (যদি ফর্ম্যাটে links থাকে)
+                    let linksHTML = "";
+                    if(m.links && Array.isArray(m.links)) {
+                        linksHTML = m.links.filter(l => l.url).map(l => `
+                            <a href="${l.url}" target="_blank" class="flex justify-between items-center p-5 bg-gray-900 border border-blue-600/20 text-white rounded-2xl font-black text-[10px] uppercase hover:bg-blue-600 transition shadow-xl">
+                                <span>${l.q || 'HD'} Quality</span>
+                                <span class="bg-blue-600 px-4 py-1.5 rounded-xl text-white">Download</span>
+                            </a>
+                        `).join('');
+                    } else if (m.url || m.link) {
+                        // ব্যাকআপ সিঙ্গেল লিঙ্কের জন্য
+                        linksHTML = `
+                            <a href="${m.url || m.link}" target="_blank" class="flex justify-between items-center p-5 bg-blue-600 text-white rounded-2xl font-black text-[10px] uppercase hover:bg-blue-700 transition shadow-xl text-center">
+                               <span>Download / Stream Now</span>
+                            </a>
+                        `;
+                    }
+
+                    document.getElementById('movie-content').innerHTML = `
+                        <div class="w-full md:w-auto flex justify-center shrink-0">
+                            <img src="${m.img}" class="detail-poster aspect-[2/3] object-cover border border-white/5" onerror="this.src='https://via.placeholder.com/300x450/0f172a/1e293b?text=No+Poster'">
+                        </div>
+                        <div class="flex-1 text-center md:text-left">
+                            <h1 class="text-4xl md:text-6xl font-black uppercase tracking-tighter leading-tight mb-2">${m.title}</h1>
+                            <p class="text-blue-500 font-black text-xs uppercase mb-8 tracking-widest">${m.year || ''} • ${categoriesText}</p>
+                            <p class="text-gray-400 text-lg leading-relaxed mb-12 border-l-0 md:border-l-4 border-blue-600 md:pl-6 italic">${m.desc || 'No description available.'}</p>
+                            
+                            <div class="grid gap-4 max-w-md mx-auto md:mx-0">
+                                ${linksHTML || '<p class="text-gray-600 text-xs">No download options available.</p>'}
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    document.getElementById('movie-content').innerHTML = "<h1 class='text-2xl font-black uppercase text-red-500 mx-auto'>Movie Not Found in Database</h1>";
+                }
+            } catch (error) {
+                console.error("Error fetching movie details: ", error);
+                document.getElementById('movie-content').innerHTML = "<h1 class='text-xl font-bold text-red-500 mx-auto'>Error loading movie data.</h1>";
+            }
+        }
+
+        window.onload = getMovieDetails;
+    </script>
+</body>
+</html>
