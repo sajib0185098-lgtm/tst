@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "166372600413",
+    "firebase_url": "https://sunmod-e9a65-default-rtdb.firebaseio.com",
+    "project_id": "sunmod-e9a65",
+    "storage_bucket": "sunmod-e9a65.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:166372600413:android:0b933912075862ef993bb4",
+        "android_client_info": {
+          "package_name": "com.v01d.premium"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAVazp6fRWeupBjymQAohaEm0nIJApuj38"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
