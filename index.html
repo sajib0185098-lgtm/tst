@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title id="site-title">BAFLIX - Stream Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+        body { background-color: #050811; color: white; font-family: 'Inter', sans-serif; overflow-x: hidden; }
+        .movie-card { 
+            transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1); cursor: pointer; border-radius: 15px; 
+            overflow: hidden; background: #0f172a; border: 1px solid #1e293b;
+        }
+        .movie-card:hover { transform: translateY(-5px); border-color: #3b82f6; box-shadow: 0 10px 20px -10px rgba(59, 130, 246, 0.5); }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+    </style>
+</head>
+<body>
+
+    <nav class="p-4 bg-black/80 backdrop-blur-md border-b border-gray-800 sticky top-0 z-50">
+        <div class="container mx-auto flex justify-between items-center px-2">
+            <h1 id="site-logo" class="text-xl font-black text-blue-500 cursor-pointer tracking-tighter uppercase" onclick="location.reload()">BAFLIX</h1>
+            
+            <div class="flex items-center bg-gray-900 border border-gray-700 rounded-full px-4 py-1.5 focus-within:border-blue-500 transition">
+                <input type="text" id="search-input" placeholder="Search movies..." class="bg-transparent outline-none text-xs w-40 md:w-64 text-white" oninput="searchMovies()">
+            </div>
+        </div>
+    </nav>
+
+    <main class="container mx-auto p-4">
+        <div id="cat-bar" class="flex gap-2 overflow-x-auto no-scrollbar my-6"></div>
+
+        <div id="movie-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-6">
+            <p class="col-span-full text-center text-gray-500 py-10 animate-pulse uppercase text-xs font-bold tracking-widest">Loading Cinema Library...</p>
+        </div>
+    </main>
+
+    <script>
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyDpYzp9DfJ6JZeZ0dgCOppP_ZzU-NnZeBY",
+            authDomain: "naw179.firebaseapp.com",
+            projectId: "naw179",
+            storageBucket: "naw179.firebasestorage.app",
+            messagingSenderId: "829601524927",
+            appId: "1:829601524927:web:5cca620b1f2d82c3c82a0a",
+            measurementId: "G-XGFJ0LTEH3"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        
+        let allMovies = []; // মাস্টার ডেটা হোল্ডার
+
+        // ১. ফায়ারবেস থেকে মুভি লোড করা
+        async function loadMovies() {
+            try {
+                // রিয়েল-টাইম স্ন্যাপশট লিসেনার (অ্যাডমিন প্যানেলে আপলোড হলে এখানে অটো লোড হবে)
+                db.collection('movies').orderBy('updatedAt', 'desc').onSnapshot(snapshot => {
+                    allMovies = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    renderCategories(allMovies);
+                    renderMovies(allMovies);
+                });
+            } catch (error) {
+                console.error("Error connecting firestore: ", error);
+                document.getElementById('movie-grid').innerHTML = `<p class="col-span-full text-center text-red-500">Database connection failed.</p>`;
+            }
+        }
+
+        // ২. স্ক্রিনে মুভি রেন্ডার করার কোর লজিক
+        function renderMovies(data) {
+            const grid = document.getElementById('movie-grid');
+            if(data.length === 0) {
+                grid.innerHTML = `<div class="col-span-full py-20 text-center text-gray-500 uppercase text-xs font-black tracking-widest">No Matches Found</div>`;
+                return;
+            }
+            
+            grid.innerHTML = data.map(m => `
+                <div class="movie-card animate-fadeIn" onclick="handleAdBypass('${m.id}')">
+                    <div class="relative aspect-[2/3] w-full overflow-hidden bg-gray-950">
+                        <img src="${m.img}" class="w-full h-full object-cover" onerror="this.src='https://via.placeholder.com/300x450/0f172a/1e293b?text=No+Poster'">
+                    </div>
+                    <div class="p-3 bg-gradient-to-t from-black/40 to-transparent">
+                        <h3 class="text-[10px] font-black truncate uppercase text-gray-100 tracking-wide">${m.title}</h3>
+                        <div class="flex justify-between items-center mt-1">
+                            <p class="text-[8px] text-blue-500 font-bold">${m.year || 'N/A'}</p>
+                            ${m.adLinks && m.adLinks.filter(l=>l).length > 0 ? `<span class="text-[6px] bg-amber-500/10 text-amber-500 px-1.5 py-0.5 rounded font-black uppercase">Ads Protection</span>` : ''}
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // ৩. অ্যাড লিঙ্ক বাইপাস ও সিকোয়েন্স কন্ট্রোল লজিক (The Master Logic)
+        function handleAdBypass(id) {
+            const movie = allMovies.find(m => m.id === id);
+            if (!movie) return;
+
+            // শুধুমাত্র ভ্যালিড (যা ফাঁকা নয়) অ্যাড লিঙ্কগুলো ফিল্টার করে নেওয়া
+            const adLinks = movie.adLinks ? movie.adLinks.filter(link => link && link.trim() !== "") : [];
+
+            // ব্রাউজার সেশন থেকে চেক করা এই সুনির্দিষ্ট মুভিতে ক্লিক সংখ্যা কত
+            let currentClicks = parseInt(sessionStorage.getItem(`ad_clicks_${id}`)) || 0;
+
+            if (currentClicks < adLinks.length) {
+                // নির্দিষ্ট ক্লিকে নির্দিষ্ট অ্যাড লিঙ্ক সিলেক্ট করা
+                const targetAd = adLinks[currentClicks];
+                
+                // সেশনে ক্লিক কাউন্ট ১ বাড়িয়ে দেওয়া
+                sessionStorage.setItem(`ad_clicks_${id}`, currentClicks + 1);
+                
+                // অ্যাড ওপেন করা (নতুন ট্যাবে ওপেন হবে, যাতে ইউজার আপনার মূল সাইটেই থাকে)
+                window.open(targetAd, '_blank');
+            } else {
+                // সব অ্যাড বাইপাস শেষ হলে আসল বিস্তারিত পেজে নিয়ে যাবে
+                window.open(`movie.html?id=${id}`, '_blank');
+            }
+        }
+
+        // ৪. ডাইনামিক ক্যাটাগরি জেনারেটর
+        function renderCategories(movies) {
+            const catBar = document.getElementById('cat-bar');
+            let categories = ['All'];
+            
+            movies.forEach(m => {
+                if (m.category && Array.isArray(m.category)) {
+                    m.category.forEach(c => { if(!categories.includes(c)) categories.push(c); });
+                }
+            });
+            
+            catBar.innerHTML = categories.map(c => `
+                <button onclick="filterByCat('${c}', this)" class="cat-btn px-5 py-2.5 rounded-full text-[9px] font-black uppercase bg-gray-900 border border-gray-800 hover:bg-blue-600 hover:border-blue-500 transition shrink-0 tracking-wider">
+                    ${c}
+                </button>
+            `).join('');
+            
+            // প্রথম বাটনে একটিভ ক্লাস দেওয়া
+            if(catBar.firstElementChild) catBar.firstElementChild.classList.add('bg-blue-600', 'border-blue-500');
+        }
+
+        // ৫. ক্যাটাগরি ফিল্টারিং ফিল্টার লজিক
+        function filterByCat(cat, btn) {
+            document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('bg-blue-600', 'border-blue-500'));
+            btn.classList.add('bg-blue-600', 'border-blue-500');
+
+            const filtered = (cat === 'All') ? allMovies : allMovies.filter(m => m.category && Array.isArray(m.category) && m.category.includes(cat));
+            renderMovies(filtered);
+        }
+
+        // ৬. ক্লায়েন্ট-সাইড ইনস্ট্যান্ট লাইভ সার্চ লজিক
+        function searchMovies() {
+            const query = document.getElementById('search-input').value.toLowerCase().trim();
+            const filtered = allMovies.filter(m => m.title.toLowerCase().includes(query));
+            renderMovies(filtered);
+        }
+
+        // ৭. গ্লোবাল ইউজার ট্র্যাকিং এবং ব্র্যান্ডিং সিঙ্ক
+        async function initializeSystem() {
+            try {
+                // রিয়েল-টাইম কান্ট্রি ডিটেকশন ও ডেটাবেজ পুশ
+                const res = await fetch('https://ipapi.co/json/');
+                const data = await res.json();
+                const country = data.country_name || "Unknown";
+
+                db.collection('analytics').doc(country).set({
+                    count: firebase.firestore.FieldValue.increment(1),
+                    lastVisit: firebase.firestore.FieldValue.serverTimestamp()
+                }, { merge: true });
+                
+            } catch (e) { console.log("System optimized: tracking bypassed"); }
+        }
+
+        // সিস্টেম স্টার্ট
+        window.onload = () => {
+            loadMovies();
+            initializeSystem();
+        };
+    </script>
+</body>
+</html>
