@@ -3,32 +3,61 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Loading Movie Details...</title>
+    <title>Loading Content Details...</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
-        body { background-color: #050811; color: white; font-family: 'Inter', sans-serif; }
-        .detail-poster { width: 100%; max-width: 280px; border-radius: 20px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7); }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap');
+        body { background-color: #020617; color: #f8fafc; font-family: 'Inter', sans-serif; overflow-x: hidden; }
+        
+        .detail-poster { 
+            width: 100%; 
+            max-width: 230px; 
+            border-radius: 24px; 
+            box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.9), 0 0 50px -10px rgba(59, 130, 246, 0.15); 
+            border: 1px solid rgba(255,255,255,0.08); 
+            transition: all 0.5s ease;
+        }
+
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+
+        @keyframes shimmer {
+            0% { opacity: 0.3; }
+            50% { opacity: 0.6; }
+            100% { opacity: 0.3; }
+        }
+        .shadow-pulse { animation: shimmer 1.5s infinite ease-in-out; }
     </style>
 </head>
 <body>
 
-    <nav class="p-6">
-        <button onclick="window.close()" class="text-blue-500 font-black uppercase text-xs tracking-widest flex items-center gap-2 bg-gray-900/50 px-4 py-2 rounded-full border border-gray-800 hover:bg-blue-600 hover:text-white transition">
-            ← Close Tab
+    <nav class="p-6 max-w-7xl mx-auto">
+        <button onclick="window.close()" class="text-slate-300 font-bold uppercase text-[10px] tracking-widest flex items-center gap-2 bg-slate-900 px-5 py-2.5 rounded-full border border-slate-800 hover:bg-red-600 hover:text-white hover:border-red-600 transition-all shadow-xl active:scale-95">
+            ✕ Close Player
         </button>
     </nav>
 
-    <main class="container mx-auto p-6">
-        <div id="movie-content" class="flex flex-col md:flex-row gap-12 items-start mt-4">
-            <p class="text-gray-500 animate-pulse">Fetching movie from database...</p>
+    <main class="container mx-auto p-6 max-w-7xl relative z-10">
+        <div id="movie-content" class="flex flex-col md:flex-row gap-10 md:gap-14 items-center md:items-start mt-4">
+            
+            <div class="w-full md:w-auto flex justify-center shrink-0">
+                <div class="shadow-pulse bg-slate-800/40 w-[230px] aspect-[2/3] rounded-[24px]"></div>
+            </div>
+            <div class="flex-1 w-full space-y-6 pt-4">
+                <div class="shadow-pulse bg-slate-800/70 h-12 w-3/4 rounded-xl mx-auto md:mx-0"></div>
+                <div class="shadow-pulse bg-slate-800/40 h-4 w-1/4 rounded-md mx-auto md:mx-0"></div>
+                <div class="shadow-pulse bg-slate-800/30 h-24 w-full rounded-xl"></div>
+                <div class="space-y-3 max-w-md mx-auto md:mx-0">
+                    <div class="shadow-pulse bg-slate-800/50 h-12 w-full rounded-2xl"></div>
+                </div>
+            </div>
+
         </div>
     </main>
 
     <script>
-        // একই Firebase Configuration এখানেও থাকবে
+        // Firebase Configuration
         const firebaseConfig = {
             apiKey: "AIzaSyDpYzp9DfJ6JZeZ0dgCOppP_ZzU-NnZeBY",
             authDomain: "naw179.firebaseapp.com",
@@ -42,70 +71,172 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
-        // URL থেকে ইউনিক মুভি ID সংগ্রহ করা (?id=XXXXXX)
         const params = new URLSearchParams(window.location.search);
         const movieId = params.get('id');
+        let currentMovieData = null; 
+        let selectedSeasonIndex = 0;
+        let selectedEpisodeIndex = 0;
+
+        const buttonStyles = [
+            { bg: "from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 shadow-indigo-950/50", btnBg: "bg-indigo-950/40 text-indigo-200 group-hover:bg-white group-hover:text-indigo-600" },
+            { bg: "from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 shadow-emerald-950/50", btnBg: "bg-emerald-950/40 text-emerald-200 group-hover:bg-white group-hover:text-emerald-600" },
+            { bg: "from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 shadow-violet-950/50", btnBg: "bg-violet-950/40 text-violet-200 group-hover:bg-white group-hover:text-violet-600" },
+            { bg: "from-rose-600 to-pink-600 hover:from-rose-500 hover:to-pink-500 shadow-rose-950/50", btnBg: "bg-rose-950/40 text-rose-200 group-hover:bg-white group-hover:text-rose-600" }
+        ];
 
         async function getMovieDetails() {
             if (!movieId) {
-                document.getElementById('movie-content').innerHTML = "<h1 class='text-xl font-bold text-red-500'>No Movie Requested!</h1>";
+                document.getElementById('movie-content').innerHTML = "<h1 class='text-xl font-bold text-red-500 mx-auto uppercase tracking-wider'>Invalid Request! No Item Selected.</h1>";
                 return;
             }
 
             try {
                 const doc = await db.collection('movies').doc(movieId).get();
                 if (doc.exists) {
-                    const m = doc.data();
-                    
-                    // ব্রাউজারের ট্যাবের টাইটেল মুভির নাম দিয়ে রিপ্লেস করা
-                    document.title = m.title + " - Watch Now";
-
-                    // ক্যাটাগরি অ্যারে বা স্ট্রিং হ্যান্ডেল করা
-                    let categoriesText = "";
-                    if(Array.isArray(m.category)) {
-                        categoriesText = m.category.join(' / ');
-                    } else {
-                        categoriesText = m.category || "Movie";
-                    }
-
-                    // ডাউনলোড লিংক রেন্ডার লজিক (যদি ফর্ম্যাটে links থাকে)
-                    let linksHTML = "";
-                    if(m.links && Array.isArray(m.links)) {
-                        linksHTML = m.links.filter(l => l.url).map(l => `
-                            <a href="${l.url}" target="_blank" class="flex justify-between items-center p-5 bg-gray-900 border border-blue-600/20 text-white rounded-2xl font-black text-[10px] uppercase hover:bg-blue-600 transition shadow-xl">
-                                <span>${l.q || 'HD'} Quality</span>
-                                <span class="bg-blue-600 px-4 py-1.5 rounded-xl text-white">Download</span>
-                            </a>
-                        `).join('');
-                    } else if (m.url || m.link) {
-                        // ব্যাকআপ সিঙ্গেল লিঙ্কের জন্য
-                        linksHTML = `
-                            <a href="${m.url || m.link}" target="_blank" class="flex justify-between items-center p-5 bg-blue-600 text-white rounded-2xl font-black text-[10px] uppercase hover:bg-blue-700 transition shadow-xl text-center">
-                               <span>Download / Stream Now</span>
-                            </a>
-                        `;
-                    }
-
-                    document.getElementById('movie-content').innerHTML = `
-                        <div class="w-full md:w-auto flex justify-center shrink-0">
-                            <img src="${m.img}" class="detail-poster aspect-[2/3] object-cover border border-white/5" onerror="this.src='https://via.placeholder.com/300x450/0f172a/1e293b?text=No+Poster'">
-                        </div>
-                        <div class="flex-1 text-center md:text-left">
-                            <h1 class="text-4xl md:text-6xl font-black uppercase tracking-tighter leading-tight mb-2">${m.title}</h1>
-                            <p class="text-blue-500 font-black text-xs uppercase mb-8 tracking-widest">${m.year || ''} • ${categoriesText}</p>
-                            <p class="text-gray-400 text-lg leading-relaxed mb-12 border-l-0 md:border-l-4 border-blue-600 md:pl-6 italic">${m.desc || 'No description available.'}</p>
-                            
-                            <div class="grid gap-4 max-w-md mx-auto md:mx-0">
-                                ${linksHTML || '<p class="text-gray-600 text-xs">No download options available.</p>'}
-                            </div>
-                        </div>
-                    `;
+                    currentMovieData = doc.data();
+                    renderContentUI();
                 } else {
-                    document.getElementById('movie-content').innerHTML = "<h1 class='text-2xl font-black uppercase text-red-500 mx-auto'>Movie Not Found in Database</h1>";
+                    document.getElementById('movie-content').innerHTML = "<h1 class='text-xl font-black uppercase text-red-500 mx-auto tracking-wider'>Content Removed or Not Found</h1>";
                 }
             } catch (error) {
-                console.error("Error fetching movie details: ", error);
-                document.getElementById('movie-content').innerHTML = "<h1 class='text-xl font-bold text-red-500 mx-auto'>Error loading movie data.</h1>";
+                console.error("Error loading details: ", error);
+                document.getElementById('movie-content').innerHTML = "<h1 class='text-xs font-bold text-red-500 mx-auto uppercase tracking-widest'>Server timeout. Connection failed.</h1>";
+            }
+        }
+
+        function renderContentUI() {
+            const m = currentMovieData;
+            document.title = m.title + " - Stream Pro";
+            let categoriesText = Array.isArray(m.category) ? m.category.join('  •  ') : (m.category || "Movie");
+
+            let seriesControlsHTML = "";
+            let linksHTML = "";
+
+            // ⚡ চেক করা হচ্ছে এটি ওয়েব সিরিজ কি না
+            if (m.isSeries && m.seasons && Array.isArray(m.seasons) && m.seasons.length > 0) {
+                
+                // ১. সিজন সিলেক্টর অপশন তৈরি
+                let seasonOptions = m.seasons.map((s, idx) => `<option value="${idx}" ${idx === selectedSeasonIndex ? 'selected' : ''}>Season ${s.seasonNumber || (idx + 1)}</option>`).join('');
+                
+                // ২. বর্তমান সিলেক্টেড সিজনের এপিসোড লিস্ট জেনারেট
+                const currentSeason = m.seasons[selectedSeasonIndex];
+                let episodeButtons = "";
+                
+                if (currentSeason && currentSeason.episodes && Array.isArray(currentSeason.episodes)) {
+                    episodeButtons = currentSeason.episodes.map((ep, epIdx) => {
+                        const isActive = epIdx === selectedEpisodeIndex;
+                        return `
+                            <button onclick="changeEpisode(${epIdx})" class="px-4 py-2.5 rounded-xl text-xs font-bold uppercase border transition-all ${isActive ? 'bg-blue-600 border-blue-500 text-white shadow-lg' : 'bg-slate-900 border-slate-800 text-slate-300 hover:bg-slate-800'}">
+                                Ep ${ep.episodeNumber || (epIdx + 1)}
+                            </button>
+                        `;
+                    }).join('');
+
+                    // ৩. সিলেক্টেড এপিসোডের ডাউনলোড লিংক সেটআপ
+                    const currentEpisode = currentSeason.episodes[selectedEpisodeIndex];
+                    if (currentEpisode) {
+                        if (currentEpisode.links && Array.isArray(currentEpisode.links)) {
+                            linksHTML = currentEpisode.links.filter(l => l.url && l.url.trim() !== "").map((l, index) => {
+                                const style = buttonStyles[index % buttonStyles.length];
+                                return `
+                                    <button onclick="handleDownloadClick('${encodeURIComponent(l.url)}')" class="w-full flex justify-between items-center p-4.5 bg-gradient-to-r ${style.bg} text-white rounded-2xl font-black text-xs uppercase tracking-wider transition-all duration-300 transform hover:-translate-y-1 hover:shadow-2xl shadow-xl border border-white/10 group active:scale-[0.98]">
+                                        <span class="text-white drop-shadow-md pl-2">${l.q || 'HD Stream Server'}</span>
+                                        <span class="${style.btnBg} px-4 py-2 rounded-xl text-[10px] font-black tracking-widest transition-all duration-300 shadow-inner">Download / Stream</span>
+                                    </button>
+                                `;
+                            }).join('');
+                        }
+                    }
+                }
+
+                seriesControlsHTML = `
+                    <div class="bg-slate-900/60 border border-slate-800/80 p-4 rounded-2xl space-y-4">
+                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                            <label class="text-[10px] font-black uppercase tracking-wider text-slate-400">Select Season & Episode:</label>
+                            <select onchange="changeSeason(this.value)" class="bg-slate-950 border border-slate-800 text-xs font-bold rounded-xl px-4 py-2 text-white outline-none focus:border-blue-500">
+                                ${seasonOptions}
+                            </select>
+                        </div>
+                        <div class="flex flex-wrap gap-2 max-h-32 overflow-y-auto no-scrollbar p-1">
+                            ${episodeButtons || '<p class="text-xs text-slate-500">No episodes found in this season.</p>'}
+                        </div>
+                    </div>
+                `;
+
+            } else {
+                // 🎬 এটি সাধারণ মুভি হলে রেগুলার বাটন জেনারেট হবে
+                if(m.links && Array.isArray(m.links)) {
+                    linksHTML = m.links.filter(l => l.url && l.url.trim() !== "").map((l, index) => {
+                        const style = buttonStyles[index % buttonStyles.length];
+                        return `
+                            <button onclick="handleDownloadClick('${encodeURIComponent(l.url)}')" class="w-full flex justify-between items-center p-4.5 bg-gradient-to-r ${style.bg} text-white rounded-2xl font-black text-xs uppercase tracking-wider transition-all duration-300 transform hover:-translate-y-1 hover:shadow-2xl shadow-xl border border-white/10 group active:scale-[0.98]">
+                                <span class="text-white drop-shadow-md pl-2">${l.q || 'Ultra HD Server'}</span>
+                                <span class="${style.btnBg} px-4 py-2 rounded-xl text-[10px] font-black tracking-widest transition-all duration-300 shadow-inner">Download / Stream</span>
+                            </button>
+                        `;
+                    }).join('');
+                }
+
+                if(!linksHTML && (m.url || m.link)) {
+                    linksHTML = `
+                        <button onclick="handleDownloadClick('${encodeURIComponent(m.url || m.link)}')" class="w-full flex justify-between items-center p-4.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-2xl font-black text-xs uppercase tracking-widest text-center shadow-xl hover:-translate-y-1 transition-all active:scale-95 border border-white/10">
+                           <span class="w-full text-center">Download / Stream Now</span>
+                        </button>
+                    `;
+                }
+            }
+
+            document.getElementById('movie-content').innerHTML = `
+                <div class="w-full md:w-auto flex justify-center shrink-0">
+                    <img src="${m.img}" class="detail-poster aspect-[2/3] object-cover" onerror="this.src='https://via.placeholder.com/230x345/0f172a/1e293b?text=No+Poster'">
+                </div>
+                
+                <div class="flex-1 text-center md:text-left w-full pt-4 space-y-6">
+                    <div>
+                        <h1 class="text-3xl md:text-5xl font-black uppercase tracking-tight text-white mb-2 leading-none select-none">${m.title}</h1>
+                        <p class="text-blue-400 font-extrabold text-[11px] uppercase tracking-widest leading-none">${m.year || 'N/A'}    |    ${categoriesText}</p>
+                    </div>
+                    
+                    <p class="text-slate-300 text-xs md:text-sm leading-relaxed border-l-0 md:border-l-4 border-blue-500/80 md:pl-4 italic bg-slate-900/40 p-4 rounded-r-2xl border border-slate-800/50 select-none">${m.desc || 'No storyline plot available for this content.'}</p>
+                    
+                    <div class="max-w-md mx-auto md:mx-0 space-y-4">
+                        ${seriesControlsHTML}
+                        
+                        <div class="space-y-3">
+                            <p class="text-[9px] font-black tracking-[0.2em] text-slate-500 uppercase text-left pl-1">Available High-Speed Servers</p>
+                            ${linksHTML || '<p class="text-amber-500 text-xs font-bold text-left bg-amber-950/20 border border-amber-900/30 p-3 rounded-xl">Streaming links are updating. Check back later.</p>'}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function changeSeason(index) {
+            selectedSeasonIndex = parseInt(index);
+            selectedEpisodeIndex = 0; // সিজন পাল্টালে প্রথম এপিসোড ডিফল্ট সিলেক্ট হবে
+            renderContentUI();
+        }
+
+        function changeEpisode(index) {
+            selectedEpisodeIndex = parseInt(index);
+            renderContentUI();
+        }
+
+        function handleDownloadClick(encodedRealUrl) {
+            if (!currentMovieData) return;
+
+            const realUrl = decodeURIComponent(encodedRealUrl);
+            const adLinks = currentMovieData.adLinks ? currentMovieData.adLinks.filter(link => link && link.trim() !== "") : [];
+            
+            const storageKey = `download_ad_clicks_${movieId}`;
+            let currentClicks = parseInt(sessionStorage.getItem(storageKey)) || 0;
+
+            if (currentClicks < adLinks.length) {
+                const targetAd = adLinks[currentClicks];
+                sessionStorage.setItem(storageKey, currentClicks + 1);
+                window.open(targetAd, '_blank');
+            } else {
+                window.open(realUrl, '_blank');
             }
         }
 
