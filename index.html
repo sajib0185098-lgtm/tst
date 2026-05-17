@@ -8,35 +8,111 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
-        body { background-color: #050811; color: white; font-family: 'Inter', sans-serif; overflow-x: hidden; }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap');
+        body { background-color: #020617; color: #f8fafc; font-family: 'Inter', sans-serif; overflow-x: hidden; }
+        
+        /* 🌟 প্রিমিয়াম লাইটিং ও গ্লোয়িং লোগো অ্যানিমেশন */
+        .glowing-logo {
+            background: linear-gradient(to right, #3b82f6, #06b6d4, #3b82f6);
+            background-size: 200% auto;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: shine 3s linear infinite;
+            text-shadow: 0 0 20px rgba(59, 130, 246, 0.4);
+            filter: drop-shadow(0 2px 8px rgba(6, 182, 212, 0.3));
+        }
+
+        @keyframes shine {
+            0% { background-position: 0% center; }
+            50% { text-shadow: 0 0 30px rgba(6, 182, 212, 0.7); }
+            100% { background-position: 200% center; }
+        }
+        
+        /* হোমপেজ মুভি কার্ড */
         .movie-card { 
-            transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1); cursor: pointer; border-radius: 15px; 
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); cursor: pointer; border-radius: 16px; 
             overflow: hidden; background: #0f172a; border: 1px solid #1e293b;
         }
-        .movie-card:hover { transform: translateY(-5px); border-color: #3b82f6; box-shadow: 0 10px 20px -10px rgba(59, 130, 246, 0.5); }
+        .movie-card:hover { 
+            transform: translateY(-6px) scale(1.02); 
+            border-color: #3b82f6; 
+            box-shadow: 0 20px 25px -5px rgba(59, 130, 246, 0.3); 
+        }
+        
+        /* প্রিমিয়াম সার্চ রেজাল্ট রো-কার্ড */
+        .search-row-card {
+            background: linear-gradient(135deg, #0f172a 0%, #070a13 100%);
+            border: 1px solid #1e293b;
+            transition: all 0.3s ease;
+        }
+        .search-row-card:hover {
+            border-color: #2563eb;
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            box-shadow: 0 10px 30px -10px rgba(37, 99, 235, 0.2);
+        }
+
         .no-scrollbar::-webkit-scrollbar { display: none; }
+        .search-modal { transition: opacity 0.3s ease, transform 0.3s ease; }
+        
+        /* কাস্টম পালস অ্যানিমেশন শ্যাডো লোডিং এর জন্য */
+        @keyframes shimmer {
+            0% { opacity: 0.3; }
+            50% { opacity: 0.6; }
+            100% { opacity: 0.3; }
+        }
+        .shadow-pulse { animation: shimmer 1.5s infinite ease-in-out; }
     </style>
 </head>
 <body>
 
-    <nav class="p-4 bg-black/80 backdrop-blur-md border-b border-gray-800 sticky top-0 z-50">
-        <div class="container mx-auto flex justify-between items-center px-2">
-            <h1 id="site-logo" class="text-xl font-black text-blue-500 cursor-pointer tracking-tighter uppercase" onclick="location.reload()">BAFLIX</h1>
+    <nav class="p-4 bg-[#020617]/80 backdrop-blur-xl border-b border-slate-800 sticky top-0 z-50">
+        <div class="container mx-auto flex justify-between items-center px-4">
+            <h1 id="site-logo" class="glowing-logo text-2xl md:text-3xl font-black cursor-pointer tracking-tighter uppercase select-none min-w-[100px] h-7 bg-slate-800 rounded animate-pulse md:bg-transparent md:animate-none" onclick="clearSearchState(); location.reload();">BAFLIX</h1>
             
-            <div class="flex items-center bg-gray-900 border border-gray-700 rounded-full px-4 py-1.5 focus-within:border-blue-500 transition">
-                <input type="text" id="search-input" placeholder="Search movies..." class="bg-transparent outline-none text-xs w-40 md:w-64 text-white" oninput="searchMovies()">
-            </div>
+            <form onsubmit="handleSearchSubmit(event)" class="flex items-center bg-slate-900 border border-slate-700 rounded-full px-4 py-2 focus-within:border-blue-500 transition-all w-52 md:w-80">
+                <input type="text" id="search-input" placeholder="Type name & press search..." class="bg-transparent outline-none text-xs w-full text-white placeholder-slate-500" autocomplete="off">
+                <button type="submit" class="text-slate-400 hover:text-blue-500 transition ml-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                </button>
+            </form>
         </div>
     </nav>
 
-    <main class="container mx-auto p-4">
-        <div id="cat-bar" class="flex gap-2 overflow-x-auto no-scrollbar my-6"></div>
+    <main class="container mx-auto p-4 max-w-7xl">
+        <div id="cat-bar" class="flex gap-2 overflow-x-auto no-scrollbar my-6 pb-2">
+            <div class="shadow-pulse bg-slate-800 h-8 w-16 rounded-full shrink-0"></div>
+            <div class="shadow-pulse bg-slate-800 h-8 w-20 rounded-full shrink-0"></div>
+            <div class="shadow-pulse bg-slate-800 h-8 w-24 rounded-full shrink-0"></div>
+            <div class="shadow-pulse bg-slate-800 h-8 w-16 rounded-full shrink-0"></div>
+        </div>
 
-        <div id="movie-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-6">
-            <p class="col-span-full text-center text-gray-500 py-10 animate-pulse uppercase text-xs font-bold tracking-widest">Loading Cinema Library...</p>
+        <div id="movie-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-6"></div>
+
+        <div class="flex justify-center mt-12 mb-8">
+            <button id="load-more-btn" onclick="loadMovies(true)" class="hidden items-center gap-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white font-bold text-xs uppercase tracking-widest px-8 py-4 rounded-full shadow-lg shadow-blue-900/40 border border-blue-500/30 transition-all active:scale-95">
+                <span>Load More Content</span>
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 13l-7 7-7-7m14-6l-7 7-7-7"></path></svg>
+            </button>
+            <div id="load-more-spinner" class="hidden inline-block animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-blue-500"></div>
         </div>
     </main>
+
+    <div id="search-modal" class="fixed inset-0 bg-[#020617]/95 backdrop-blur-lg z-[100] hidden overflow-y-auto p-4 md:p-10 search-modal opacity-0">
+        <div class="container mx-auto max-w-4xl">
+            
+            <div class="flex justify-between items-center border-b border-slate-800 pb-6 mb-8 mt-4">
+                <div>
+                    <span class="text-xs font-bold text-blue-500 uppercase tracking-widest">Search Results</span>
+                    <h2 id="search-query-title" class="text-xl md:text-2xl font-black text-white mt-1 uppercase">Showing Results For: ""</h2>
+                </div>
+                <button onclick="closeSearchModal()" class="bg-slate-900 border border-slate-800 text-slate-300 px-5 py-2.5 rounded-full text-xs font-bold uppercase hover:bg-red-600 hover:text-white hover:border-red-600 transition-all shadow-xl">
+                    ✕ Close Search
+                </button>
+            </div>
+
+            <div id="search-movie-container" class="space-y-4"></div>
+        </div>
+    </div>
 
     <script>
         // Firebase Configuration
@@ -53,130 +129,419 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
         
-        let allMovies = []; // মাস্টার ডেটা হোল্ডার
+        let allMovies = []; 
+        let lastVisibleDoc = null; 
+        const moviesPerPage = 20; 
+        let currentActiveCategory = 'All';
 
-        // ১. ফায়ারবেস থেকে মুভি লোড করা
-        async function loadMovies() {
+        function listenAppBranding() {
+            db.collection('analytics_reports').doc('summary').onSnapshot(doc => {
+                const logoElement = document.getElementById('site-logo');
+                // কঙ্কাল লোডার রিমুভ নিশ্চিত করা
+                logoElement.classList.remove('bg-slate-800', 'animate-pulse', 'min-w-[100px]', 'h-7');
+                
+                if (doc.exists && doc.data().siteName) {
+                    const dynamicName = doc.data().siteName.trim();
+                    document.getElementById('site-title').innerText = `${dynamicName} - Stream Pro`;
+                    logoElement.innerText = dynamicName;
+                } else {
+                    document.getElementById('site-title').innerText = "BAFLIX - Stream Pro";
+                    logoElement.innerText = "BAFLIX";
+                }
+            }, error => {
+                console.log("Branding error bypassed, fallback to default.");
+                const logoElement = document.getElementById('site-logo');
+                logoElement.classList.remove('bg-slate-800', 'animate-pulse', 'min-w-[100px]', 'h-7');
+                logoElement.innerText = "BAFLIX";
+            });
+        }
+
+        function renderShadowSkeleton() {
+            const grid = document.getElementById('movie-grid');
+            let skeletons = '';
+            for (let i = 0; i < 20; i++) {
+                skeletons += `
+                    <div class="rounded-2xl bg-[#0f172a] border border-slate-800/60 overflow-hidden shadow-md">
+                        <div class="shadow-pulse bg-slate-800/50 aspect-[2/3] w-full"></div>
+                        <div class="p-3 space-y-2">
+                            <div class="shadow-pulse bg-slate-800/80 h-3 w-5/6 rounded"></div>
+                            <div class="shadow-pulse bg-slate-800/40 h-2.5 w-1/3 rounded"></div>
+                        </div>
+                    </div>`;
+            }
+            grid.innerHTML = skeletons;
+        }
+
+        async function loadMovies(isLoadMore = false) {
+            const btn = document.getElementById('load-more-btn');
+            const spinner = document.getElementById('load-more-spinner');
+
+            if (isLoadMore) {
+                btn.classList.add('hidden');
+                spinner.classList.remove('hidden');
+            } else {
+                renderShadowSkeleton();
+            }
+
             try {
-                // রিয়েল-টাইম স্ন্যাপশট লিসেনার (অ্যাডমিন প্যানেলে আপলোড হলে এখানে অটো লোড হবে)
-                db.collection('movies').orderBy('updatedAt', 'desc').onSnapshot(snapshot => {
-                    allMovies = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                    renderCategories(allMovies);
-                    renderMovies(allMovies);
-                });
+                let query = db.collection('movies').orderBy('updatedAt', 'desc');
+                
+                if (isLoadMore && lastVisibleDoc) {
+                    query = query.startAfter(lastVisibleDoc);
+                }
+
+                const snapshot = await query.limit(moviesPerPage).get();
+
+                if (!snapshot.empty) {
+                    lastVisibleDoc = snapshot.docs[snapshot.docs.length - 1];
+                    const fetchedMovies = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+                    if (isLoadMore) {
+                        appendHomeMovies(fetchedMovies);
+                    } else {
+                        renderHomeMovies(fetchedMovies);
+                    }
+
+                    if (snapshot.docs.length === moviesPerPage) {
+                        btn.classList.remove('hidden');
+                        btn.classList.add('flex');
+                    } else {
+                        btn.classList.remove('flex');
+                        btn.classList.add('hidden');
+                    }
+                } else {
+                    btn.classList.remove('flex');
+                    btn.classList.add('hidden');
+                    if (!isLoadMore) {
+                        document.getElementById('movie-grid').innerHTML = `<div class="col-span-full py-20 text-center text-slate-500 uppercase text-xs font-black tracking-widest">No Content Available</div>`;
+                    }
+                }
             } catch (error) {
-                console.error("Error connecting firestore: ", error);
-                document.getElementById('movie-grid').innerHTML = `<p class="col-span-full text-center text-red-500">Database connection failed.</p>`;
+                console.error("Error loading movies: ", error);
+                showErrorUI();
+            } finally {
+                spinner.classList.add('hidden');
             }
         }
 
-        // ২. স্ক্রিনে মুভি রেন্ডার করার কোর লজিক
-        function renderMovies(data) {
+        function syncFullDatabase() {
+            db.collection('movies').orderBy('updatedAt', 'desc').onSnapshot(snapshot => {
+                allMovies = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                renderCategories(allMovies);
+                restoreSearchState();
+            });
+        }
+
+        function showErrorUI() {
+            document.getElementById('movie-grid').innerHTML = `<p class="col-span-full text-center text-red-500 font-bold py-10">Database connection failed. Please refresh.</p>`;
+        }
+
+        function formatUploadDate(updatedAt, timeFallback) {
+            if (updatedAt && typeof updatedAt.toDate === 'function') {
+                const dateObj = updatedAt.toDate();
+                return dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+            }
+            return timeFallback || 'Recently';
+        }
+
+        function generateMovieCardHTML(m) {
+            const uploadDateTime = formatUploadDate(m.updatedAt, m.time);
+            const typeBadge = m.isSeries ? `<span class="absolute top-2 right-2 text-[8px] bg-gradient-to-r from-blue-600 to-cyan-500 text-white px-2 py-0.5 rounded-md font-bold uppercase tracking-wider shadow-lg shadow-blue-500/20">Series</span>` : '';
+            
+            return `
+                <div class="movie-card" onclick="handleAdBypass('${m.id}')">
+                    <div class="relative aspect-[2/3] w-full overflow-hidden bg-slate-950">
+                        <img src="${m.img}" class="w-full h-full object-cover" loading="lazy" onerror="this.src='https://via.placeholder.com/300x450/0f172a/1e293b?text=No+Poster'">
+                        <span class="absolute top-2 left-2 text-[8px] bg-slate-950/80 backdrop-blur-md text-slate-300 px-2 py-0.5 rounded-md font-medium shadow-md">📅 ${uploadDateTime}</span>
+                        ${typeBadge}
+                    </div>
+                    <div class="p-3 bg-gradient-to-t from-slate-950 via-slate-900 to-transparent">
+                        <h3 class="text-xs font-bold truncate text-slate-100 tracking-wide mb-1.5 uppercase">${m.title}</h3>
+                        <div class="flex justify-between items-center"><p class="text-[10px] text-blue-400 font-bold">${m.year || 'N/A'}</p></div>
+                    </div>
+                </div>`;
+        }
+
+        function renderHomeMovies(data) {
             const grid = document.getElementById('movie-grid');
+            grid.innerHTML = data.map(m => generateMovieCardHTML(m)).join('');
+        }
+
+        function appendHomeMovies(data) {
+            const grid = document.getElementById('movie-grid');
+            grid.insertAdjacentHTML('beforeend', data.map(m => generateMovieCardHTML(m)).join(''));
+        }
+
+        function renderSearchMovies(data) {
+            const container = document.getElementById('search-movie-container');
             if(data.length === 0) {
-                grid.innerHTML = `<div class="col-span-full py-20 text-center text-gray-500 uppercase text-xs font-black tracking-widest">No Matches Found</div>`;
+                container.innerHTML = `<div class="py-20 text-center text-slate-500 uppercase text-xs font-black tracking-widest">No Matches Found in Database</div>`;
                 return;
             }
-            
-            grid.innerHTML = data.map(m => `
-                <div class="movie-card animate-fadeIn" onclick="handleAdBypass('${m.id}')">
-                    <div class="relative aspect-[2/3] w-full overflow-hidden bg-gray-950">
-                        <img src="${m.img}" class="w-full h-full object-cover" onerror="this.src='https://via.placeholder.com/300x450/0f172a/1e293b?text=No+Poster'">
-                    </div>
-                    <div class="p-3 bg-gradient-to-t from-black/40 to-transparent">
-                        <h3 class="text-[10px] font-black truncate uppercase text-gray-100 tracking-wide">${m.title}</h3>
-                        <div class="flex justify-between items-center mt-1">
-                            <p class="text-[8px] text-blue-500 font-bold">${m.year || 'N/A'}</p>
-                            ${m.adLinks && m.adLinks.filter(l=>l).length > 0 ? `<span class="text-[6px] bg-amber-500/10 text-amber-500 px-1.5 py-0.5 rounded font-black uppercase">Ads Protection</span>` : ''}
+            container.innerHTML = data.map(m => {
+                const cats = Array.isArray(m.category) ? m.category.join(', ') : (m.category || 'Content');
+                const uploadDateTime = formatUploadDate(m.updatedAt, m.time);
+                const contentTypeText = m.isSeries ? 'Web Series' : 'Movie';
+                return `
+                    <div class="search-row-card flex justify-between items-center p-4 md:p-5 rounded-2xl cursor-pointer gap-6" onclick="handleAdBypass('${m.id}')">
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center gap-2 flex-wrap mb-1.5 text-[10px]">
+                                <span class="bg-blue-900/60 text-blue-400 px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider">${contentTypeText}</span>
+                                <span class="text-slate-600">•</span>
+                                <span class="text-blue-400 font-bold tracking-wider uppercase">${m.year || 'N/A'}</span>
+                                <span class="text-slate-600">•</span>
+                                <span class="text-slate-400 font-medium uppercase tracking-wide truncate max-w-[150px]">${cats}</span>
+                                <span class="text-slate-600">•</span>
+                                <span class="text-slate-400 font-medium bg-slate-900/60 px-2 py-0.5 rounded text-[9px]">Uploaded: ${uploadDateTime}</span>
+                            </div>
+                            <h3 class="text-base md:text-xl font-black text-white uppercase tracking-tight truncate mb-2">${m.title}</h3>
+                            <p class="text-xs text-slate-400 line-clamp-2 md:line-clamp-3 leading-relaxed font-normal">${m.desc || 'No storyline details available.'}</p>
                         </div>
-                    </div>
-                </div>
-            `).join('');
+                        <div class="w-16 h-24 md:w-20 md:h-28 rounded-xl overflow-hidden bg-slate-950 shrink-0 border border-white/5 shadow-md">
+                            <img src="${m.img}" class="w-full h-full object-cover" onerror="this.src='https://via.placeholder.com/150x220/0f172a/1e293b?text=No+Poster'">
+                        </div>
+                    </div>`;
+            }).join('');
         }
 
-        // ৩. অ্যাড লিঙ্ক বাইপাস ও সিকোয়েন্স কন্ট্রোল লজিক (The Master Logic)
+        function handleSearchSubmit(event) {
+            if(event) event.preventDefault();
+            const queryInput = document.getElementById('search-input');
+            const query = queryInput.value.trim();
+            if (query === "") return;
+
+            sessionStorage.setItem('last_search_query', query);
+            const filteredMovies = allMovies.filter(m => m.title.toLowerCase().includes(query.toLowerCase()));
+            document.getElementById('search-query-title').innerText = `Showing Results For: "${query}"`;
+            renderSearchMovies(filteredMovies);
+            openSearchModal();
+            queryInput.blur(); 
+        }
+
+        function openSearchModal() {
+            const modal = document.getElementById('search-modal');
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                modal.classList.add('opacity-100');
+            }, 10);
+            document.body.style.overflow = 'hidden'; 
+            if (window.history.state !== 'search_opened') {
+                window.history.pushState('search_opened', '');
+            }
+        }
+
+        function closeSearchModal() {
+            const modal = document.getElementById('search-modal');
+            modal.classList.remove('opacity-100');
+            modal.classList.add('opacity-0');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                document.getElementById('search-input').value = ""; 
+                clearSearchState();
+            }, 300);
+            document.body.style.overflow = 'auto'; 
+        }
+
+        function clearSearchState() {
+            sessionStorage.removeItem('last_search_query');
+        }
+
+        function restoreSearchState() {
+            const savedQuery = sessionStorage.getItem('last_search_query');
+            if (savedQuery && allMovies.length > 0) {
+                document.getElementById('search-input').value = savedQuery;
+                const filteredMovies = allMovies.filter(m => m.title.toLowerCase().includes(savedQuery.toLowerCase()));
+                document.getElementById('search-query-title').innerText = `Showing Results For: "${savedQuery}"`;
+                renderSearchMovies(filteredMovies);
+                
+                const modal = document.getElementById('search-modal');
+                modal.classList.remove('hidden', 'opacity-0');
+                modal.classList.add('opacity-100');
+                document.body.style.overflow = 'hidden';
+            }
+        }
+
         function handleAdBypass(id) {
             const movie = allMovies.find(m => m.id === id);
             if (!movie) return;
 
-            // শুধুমাত্র ভ্যালিড (যা ফাঁকা নয়) অ্যাড লিঙ্কগুলো ফিল্টার করে নেওয়া
             const adLinks = movie.adLinks ? movie.adLinks.filter(link => link && link.trim() !== "") : [];
-
-            // ব্রাউজার সেশন থেকে চেক করা এই সুনির্দিষ্ট মুভিতে ক্লিক সংখ্যা কত
             let currentClicks = parseInt(sessionStorage.getItem(`ad_clicks_${id}`)) || 0;
 
             if (currentClicks < adLinks.length) {
-                // নির্দিষ্ট ক্লিকে নির্দিষ্ট অ্যাড লিঙ্ক সিলেক্ট করা
                 const targetAd = adLinks[currentClicks];
-                
-                // সেশনে ক্লিক কাউন্ট ১ বাড়িয়ে দেওয়া
                 sessionStorage.setItem(`ad_clicks_${id}`, currentClicks + 1);
-                
-                // অ্যাড ওপেন করা (নতুন ট্যাবে ওপেন হবে, যাতে ইউজার আপনার মূল সাইটেই থাকে)
                 window.open(targetAd, '_blank');
             } else {
-                // সব অ্যাড বাইপাস শেষ হলে আসল বিস্তারিত পেজে নিয়ে যাবে
                 window.open(`movie.html?id=${id}`, '_blank');
             }
         }
 
-        // ৪. ডাইনামিক ক্যাটাগরি জেনারেটর
+        window.onpopstate = function(event) {
+            const modal = document.getElementById('search-modal');
+            if (!modal.classList.contains('hidden')) {
+                modal.classList.remove('opacity-100');
+                modal.classList.add('opacity-0');
+                setTimeout(() => {
+                    modal.classList.add('hidden');
+                    document.body.style.overflow = 'auto';
+                }, 300);
+            }
+        };
+
         function renderCategories(movies) {
             const catBar = document.getElementById('cat-bar');
             let categories = ['All'];
-            
             movies.forEach(m => {
                 if (m.category && Array.isArray(m.category)) {
                     m.category.forEach(c => { if(!categories.includes(c)) categories.push(c); });
                 }
             });
-            
             catBar.innerHTML = categories.map(c => `
-                <button onclick="filterByCat('${c}', this)" class="cat-btn px-5 py-2.5 rounded-full text-[9px] font-black uppercase bg-gray-900 border border-gray-800 hover:bg-blue-600 hover:border-blue-500 transition shrink-0 tracking-wider">
+                <button onclick="filterByCat('${c}', this)" class="cat-btn px-5 py-2 rounded-full text-[10px] font-bold uppercase bg-slate-900 border border-slate-800 hover:bg-blue-600 hover:border-blue-500 transition-all shrink-0 tracking-wider">
                     ${c}
                 </button>
             `).join('');
             
-            // প্রথম বাটনে একটিভ ক্লাস দেওয়া
-            if(catBar.firstElementChild) catBar.firstElementChild.classList.add('bg-blue-600', 'border-blue-500');
+            const btns = document.querySelectorAll('.cat-btn');
+            btns.forEach(b => {
+                if(b.innerText.trim() === currentActiveCategory.toUpperCase()) {
+                    b.classList.add('bg-blue-600', 'border-blue-500');
+                }
+            });
         }
 
-        // ৫. ক্যাটাগরি ফিল্টারিং ফিল্টার লজিক
         function filterByCat(cat, btn) {
+            currentActiveCategory = cat;
             document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('bg-blue-600', 'border-blue-500'));
             btn.classList.add('bg-blue-600', 'border-blue-500');
 
-            const filtered = (cat === 'All') ? allMovies : allMovies.filter(m => m.category && Array.isArray(m.category) && m.category.includes(cat));
-            renderMovies(filtered);
+            const loadMoreBtn = document.getElementById('load-more-btn');
+
+            if (cat === 'All') {
+                lastVisibleDoc = null;
+                loadMovies();
+            } else {
+                const filtered = allMovies.filter(m => m.category && Array.isArray(m.category) && m.category.includes(cat));
+                renderHomeMovies(filtered);
+                loadMoreBtn.classList.remove('flex');
+                loadMoreBtn.classList.add('hidden');
+            }
         }
 
-        // ৬. ক্লায়েন্ট-সাইড ইনস্ট্যান্ট লাইভ সার্চ লজিক
-        function searchMovies() {
-            const query = document.getElementById('search-input').value.toLowerCase().trim();
-            const filtered = allMovies.filter(m => m.title.toLowerCase().includes(query));
-            renderMovies(filtered);
+        function generateDeviceFingerprint() {
+            const navigatorInfo = window.navigator.userAgent + window.navigator.language + window.screen.colorDepth + window.screen.width + window.screen.height;
+            let hash = 0;
+            for (let i = 0; i < navigatorInfo.length; i++) {
+                const char = navigatorInfo.charCodeAt(i);
+                hash = ((hash << 5) - hash) + char;
+                hash = hash & hash;
+            }
+            return 'DEV-' + Math.abs(hash).toString(36).toUpperCase();
         }
 
-        // ৭. গ্লোবাল ইউজার ট্র্যাকিং এবং ব্র্যান্ডিং সিঙ্ক
         async function initializeSystem() {
             try {
-                // রিয়েল-টাইম কান্ট্রি ডিটেকশন ও ডেটাবেজ পুশ
+                const hardwareFingerprint = generateDeviceFingerprint();
+                let localUID = localStorage.getItem('baflix_tracking_uid');
+                
+                if (!localUID) {
+                    localUID = 'UID-' + Math.random().toString(36).substring(2, 11) + Date.now().toString(36).toUpperCase();
+                    localStorage.setItem('baflix_tracking_uid', localUID);
+                }
+
+                const deviceDocRef = db.collection('user_devices').doc(hardwareFingerprint);
+                const deviceSnap = await deviceDocRef.get();
+
+                let joinTimestamp = Date.now();
+                let isNewUser = false;
+
+                if (deviceSnap.exists) {
+                    joinTimestamp = deviceSnap.data().joinDate;
+                    localStorage.setItem('baflix_join_date', joinTimestamp.toString());
+                } else {
+                    isNewUser = true;
+                    await deviceDocRef.set({
+                        uid: localUID,
+                        joinDate: joinTimestamp,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    localStorage.setItem('baflix_join_date', joinTimestamp.toString());
+                }
+
+                const msDiff = Date.now() - joinTimestamp;
+                const daysActive = msDiff / (1000 * 60 * 60 * 24);
+
+                let currentCategory = 'A'; 
+                if (daysActive > 1 && daysActive <= 3) currentCategory = 'B';     
+                else if (daysActive > 3 && daysActive <= 7) currentCategory = 'C';  
+                else if (daysActive > 7 && daysActive <= 30) currentCategory = 'D'; 
+                else if (daysActive > 30) currentCategory = 'E';                    
+
                 const res = await fetch('https://ipapi.co/json/');
                 const data = await res.json();
-                const country = data.country_name || "Unknown";
+                const userCountry = data.country_name || "Unknown";
 
-                db.collection('analytics').doc(country).set({
-                    count: firebase.firestore.FieldValue.increment(1),
-                    lastVisit: firebase.firestore.FieldValue.serverTimestamp()
+                const batch = db.batch();
+
+                const globalReportRef = db.collection('analytics_reports').doc('summary');
+                batch.set(globalReportRef, {
+                    totalRawViews: firebase.firestore.FieldValue.increment(1),
+                    [`category_${currentCategory}_views`]: firebase.firestore.FieldValue.increment(1)
                 }, { merge: true });
+
+                if (isNewUser) {
+                    batch.set(globalReportRef, {
+                        totalUniqueUsers: firebase.firestore.FieldValue.increment(1),
+                        [`category_${currentCategory}_unique_users`]: firebase.firestore.FieldValue.increment(1)
+                    }, { merge: true });
+                }
+
+                const currentHourTimestamp = Math.floor(Date.now() / (1000 * 60 * 60)); 
+                const hourlyRef = db.collection('analytics_realtime_24h').doc(`hour_${currentHourTimestamp}`);
                 
-            } catch (e) { console.log("System optimized: tracking bypassed"); }
+                batch.set(hourlyRef, {
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                    hourlyViews: firebase.firestore.FieldValue.increment(1),
+                    country: userCountry,
+                    userCategory: currentCategory
+                }, { merge: true });
+
+                await batch.commit();
+                cleanExpiredRealtimeData();
+
+            } catch (e) { 
+                console.error("Cloud tracking sync error: ", e); 
+            }
         }
 
-        // সিস্টেম স্টার্ট
+        async function cleanExpiredRealtimeData() {
+            try {
+                const oneDayAgo = new Date(Date.now() - (24 * 60 * 60 * 1000));
+                const expiredDocs = await db.collection('analytics_realtime_24h')
+                                            .where('timestamp', '<', oneDayAgo)
+                                            .get();
+                                            
+                if (!expiredDocs.empty) {
+                    const deleteBatch = db.batch();
+                    expiredDocs.docs.forEach(doc => {
+                        deleteBatch.delete(doc.ref);
+                    });
+                    await deleteBatch.commit();
+                }
+            } catch (err) {
+                console.log("Cleanup system bypassed.");
+            }
+        }
+
+        renderShadowSkeleton();
+
         window.onload = () => {
-            loadMovies();
-            initializeSystem();
+            listenAppBranding(); 
+            loadMovies(); 
+            syncFullDatabase(); 
+            initializeSystem(); 
         };
     </script>
 </body>
