@@ -832,8 +832,7 @@
             // গ্লোবাল ডিফল্ট অ্যাড লিংক (যদি অ্যাডমিন প্যানেল থেকে কোনো স্পেসিফিক অ্যাড দেওয়া না থাকে)
             // ==========================================
             const adLinks = [
-                "https://example.com/ad1", 
-                "https://example.com/ad2"  
+                "https://example.com/ad1" // এটি ডিফল্ট একটি অ্যাড লিংক
             ];
             // ==========================================
 
@@ -868,6 +867,31 @@
                     });
                 } catch (error) {
                     console.error("Error incrementing download count:", error);
+                }
+            };
+
+            // ==========================================
+            // লিংক ওপেন করার সেফ ফাংশন (পেজ রিলোড আটকানোর জন্য)
+            // ==========================================
+            const openSafeLink = (url) => {
+                const tgApp = window.Telegram?.WebApp;
+                
+                // যদি অ্যাপটি টেলিগ্রামের ভেতরে চলে
+                if (tgApp && tgApp.initData) {
+                    // যদি টেলিগ্রামের নিজস্ব চ্যানেল/বট/গ্রুপ লিংক হয়
+                    if (url.includes('t.me/')) {
+                        try {
+                            tgApp.openTelegramLink(url);
+                        } catch (e) {
+                            tgApp.openLink(url);
+                        }
+                    } else {
+                        // বাইরের ইউটিউব বা অন্য কোনো ওয়েবসাইট লিংক
+                        tgApp.openLink(url);
+                    }
+                } else {
+                    // সাধারণ ব্রাউজারের ক্ষেত্রে
+                    window.open(url, '_blank');
                 }
             };
 
@@ -1154,7 +1178,7 @@
 
             const handleWelcomePopupClick = () => {
                 if (popupLinkUrl) {
-                    window.open(popupLinkUrl, '_blank');
+                    openSafeLink(popupLinkUrl);
                 }
                 closeWelcomePopup();
             };
@@ -1291,7 +1315,7 @@
                 shareBtn.innerHTML = `<i class="fas fa-share-alt"></i> Share`;
                 shareBtn.onclick = () => {
                     const telegramShareUrl = `https://t.me/share/url?url=${encodeURIComponent(deepLink)}&text=${encodeURIComponent(shareMessage)}`;
-                    window.open(telegramShareUrl, '_blank');
+                    openSafeLink(telegramShareUrl);
                 };
                 actionsContainer.appendChild(shareBtn);
                 
@@ -1313,24 +1337,24 @@
                         if (link.ads && link.ads.trim() !== '') {
                             currentBtnAdLinks = link.ads.split(',').map(u => u.trim()).filter(u => u);
                         } else {
-                            currentBtnAdLinks = adLinks; // যদি অ্যাডমিন প্যানেল থেকে অ্যাড না দেওয়া থাকে, তাহলে গ্লোবাল অ্যাড লিংক কাজ করবে
+                            currentBtnAdLinks = adLinks; // যদি অ্যাডমিন প্যানেল থেকে অ্যাড না দেওয়া থাকে
                         }
 
                         let clickCount = 0; // বাটনে কতবার ক্লিক হয়েছে তার কাউন্টার
                         
                         button.addEventListener('click', (e) => {
                             e.preventDefault();
+                            e.stopPropagation(); // পেজ রিলোড এবং ডিফল্ট ইভেন্ট বন্ধ করা হলো
                             
-                            // অ্যাড লিংক বাকি থাকলে আগে অ্যাড ওপেন হবে নতুন ট্যাবে (_blank)
+                            // অ্যাড লিংক বাকি থাকলে আগে অ্যাড ওপেন হবে
                             if (clickCount < currentBtnAdLinks.length) {
-                                window.open(currentBtnAdLinks[clickCount], '_blank');
+                                openSafeLink(currentBtnAdLinks[clickCount]);
                                 clickCount++;
-                                // _blank এ ওপেন হওয়ার কারণে পপ-আপ ঠিক আগের মতোই থাকবে। ব্যাক করলে ইউজার আগের পেইজেই ফিরে আসবে।
                             } else {
                                 // সব অ্যাড দেখানো শেষ হলে অরিজিনাল ডাউনলোড লিংক ওপেন হবে
                                 incrementDownloadCount(movie.id);
                                 if (link.url) {
-                                    window.open(link.url, '_blank');
+                                    openSafeLink(link.url);
                                 }
                             }
                         });
@@ -1377,23 +1401,24 @@
                                         if (link.ads && link.ads.trim() !== '') {
                                             currentBtnAdLinks = link.ads.split(',').map(u => u.trim()).filter(u => u);
                                         } else {
-                                            currentBtnAdLinks = adLinks; // যদি অ্যাডমিন প্যানেল থেকে অ্যাড না দেওয়া থাকে
+                                            currentBtnAdLinks = adLinks; 
                                         }
 
                                         let clickCount = 0; // বাটনে কতবার ক্লিক হয়েছে তার কাউন্টার
                                         
                                         button.addEventListener('click', (e) => {
                                             e.preventDefault();
+                                            e.stopPropagation(); // পেজ রিলোড এবং ডিফল্ট ইভেন্ট বন্ধ করা হলো
                                             
-                                            // অ্যাড লিংক বাকি থাকলে আগে অ্যাড ওপেন হবে নতুন ট্যাবে (_blank)
+                                            // অ্যাড লিংক বাকি থাকলে আগে অ্যাড ওপেন হবে
                                             if (clickCount < currentBtnAdLinks.length) {
-                                                window.open(currentBtnAdLinks[clickCount], '_blank');
+                                                openSafeLink(currentBtnAdLinks[clickCount]);
                                                 clickCount++;
                                             } else {
                                                 // সব অ্যাড দেখানো শেষ হলে অরিজিনাল ডাউনলোড লিংক ওপেন হবে
                                                 incrementDownloadCount(movie.id);
                                                 if (link.url) {
-                                                    window.open(link.url, '_blank');
+                                                    openSafeLink(link.url);
                                                 }
                                             }
                                         });
